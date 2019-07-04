@@ -2,13 +2,13 @@ package com.jj0327.practice.util;
 
 import com.baomidou.mybatisplus.core.exceptions.MybatisPlusException;
 import com.baomidou.mybatisplus.core.toolkit.StringPool;
-import com.baomidou.mybatisplus.core.toolkit.StringUtils;
 import com.baomidou.mybatisplus.generator.AutoGenerator;
 import com.baomidou.mybatisplus.generator.InjectionConfig;
 import com.baomidou.mybatisplus.generator.config.*;
 import com.baomidou.mybatisplus.generator.config.po.TableInfo;
 import com.baomidou.mybatisplus.generator.config.rules.NamingStrategy;
 import com.baomidou.mybatisplus.generator.engine.FreemarkerTemplateEngine;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,6 +46,7 @@ public class CodeGenerator {
         gc.setOutputDir(projectPath + "/src/main/java");
         gc.setAuthor("jobob");
         gc.setOpen(false);
+        // gc.setSwagger2(true); 实体属性 Swagger2 注解
         mpg.setGlobalConfig(gc);
 
         // 数据源配置
@@ -82,12 +83,21 @@ public class CodeGenerator {
         focList.add(new FileOutConfig(templatePath) {
             @Override
             public String outputFile(TableInfo tableInfo) {
-                // 自定义输出文件名
+                // 自定义输出文件名 ， 如果你 Entity 设置了前后缀、此处注意 xml 的名称会跟着发生变化！！
                 return projectPath + "/src/main/resources/mapper/" + pc.getModuleName()
                         + "/" + tableInfo.getEntityName() + "Mapper" + StringPool.DOT_XML;
             }
         });
-
+        /*
+        cfg.setFileCreate(new IFileCreate() {
+            @Override
+            public boolean isCreate(ConfigBuilder configBuilder, FileType fileType, String filePath) {
+                // 判断自定义文件夹是否需要创建
+                checkDir("调用默认方法创建的目录");
+                return false;
+            }
+        });
+        */
         cfg.setFileOutConfigList(focList);
         mpg.setCfg(cfg);
 
@@ -99,7 +109,7 @@ public class CodeGenerator {
         // templateConfig.setEntity("templates/entity2.java");
         // templateConfig.setService();
         // templateConfig.setController();
-        
+
         templateConfig.setXml(null);
         mpg.setTemplate(templateConfig);
 
@@ -111,7 +121,7 @@ public class CodeGenerator {
         strategy.setEntityLombokModel(true);
         strategy.setRestControllerStyle(true);
         strategy.setSuperControllerClass("com.baomidou.ant.common.BaseController");
-        strategy.setInclude(scanner("表名"));
+        strategy.setInclude(scanner("表名，多个英文逗号分割").split(","));
         strategy.setSuperEntityColumns("id");
         strategy.setControllerMappingHyphenStyle(true);
         strategy.setTablePrefix(pc.getModuleName() + "_");
