@@ -2,11 +2,14 @@ package com.jj0327.practice.service.impl;
 
 import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.jj0327.practice.entity.base.Result;
 import com.jj0327.practice.service.SeleniumService;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.*;
+import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 import org.openqa.selenium.support.ui.WebDriverWait;
@@ -14,7 +17,14 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.io.UnsupportedEncodingException;
 import java.net.HttpCookie;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.Charset;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -33,14 +43,9 @@ public class SeleniumServiceImpl implements SeleniumService {
     public Result<String> login(String username, String password) {
         WebDriver driver = null;
         try {
-            System.setProperty("webdriver.firefox.bin", "E://Program Files//Mozilla Firefox//firefox.exe");
-            System.setProperty("webdriver.gecko.driver", "E://java//chromedriver_win32//geckodriver.exe");
-            FirefoxOptions options = new FirefoxOptions();
-            options.addArguments("--headless"); //无浏览器模式
-            driver = new FirefoxDriver(options);//实例化
-//        driver.manage().window().maximize();
+            driver = init(1);
+            driver.manage().window().maximize();
             //全局隐式等待，等待
-//        driver.manage().addCookie(new Cookie("sfut", "68D573B980904D90F63997C47E65CE1B9CC96405A88043421142195A05E824E55AA72F10CA4DF2E52CCE2B7F9405D5DBAB486265F0A49CD137E5E340C96F76DA2D577C33873E5C71F8B4A5B9E9C3ABB30AE527EAAB2F24B9"));
             driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
             //设定网址
             driver.get("https://2.fang.com/Default.aspx");
@@ -56,12 +61,13 @@ public class SeleniumServiceImpl implements SeleniumService {
             WebElement text2 = driver.findElement(By.id("password"));
             text2.sendKeys(password);
             Thread.sleep(1000);
-            text2.submit();
+//            text2.submit();
 
             WebElement loginButton3 = driver.findElement(By.id("imgbt_login"));
             loginButton3.click();
             //显示等待控制对象
-            WebDriverWait webDriverWait = new WebDriverWait(driver, 5);
+            Thread.sleep(1000);
+            driver.get("https://2.fang.com/magent/house/sale/saleinput.aspx");
 //        String page = driver.getPageSource();//获取网页全部信息
             Set<Cookie> cookies = driver.manage().getCookies();
             String s = JSONObject.toJSONString(cookies);
@@ -72,43 +78,41 @@ public class SeleniumServiceImpl implements SeleniumService {
             return Result.fail(-1, e.getMessage());
         } finally {
             if (driver != null) {
-                driver.close();
+//                driver.close();
             }
         }
     }
+
 
     @Override
     public Result publish(String username, String password) {
         String s = stringRedisTemplate.opsForValue().get("soufang:cookie:" + username);
         if (StringUtils.isBlank(s)) {
             System.out.println("=======================重新登录=========================");
-            Result<String> login = login(username, password);
-            if (login.getCode() != Result.SUCCESS_CODE) {
-                return login;
+            synchronized (SeleniumService.class) {
+                Result<String> login = login(username, password);
+                if (login.getCode() != Result.SUCCESS_CODE) {
+                    return login;
+                }
+                String data = login.getData();
+                System.out.println(data);
+                s = data;
             }
-            String data = login.getData();
         }
-        Set objects = JSONObject.parseObject(s, Set.class);
 
         WebDriver driver = null;
         try {
-            System.setProperty("webdriver.firefox.bin", "E://Program Files//Mozilla Firefox//firefox.exe");
-            System.setProperty("webdriver.gecko.driver", "E://java//chromedriver_win32//geckodriver.exe");
-            FirefoxOptions options = new FirefoxOptions();
-//            options.addPreference("profile.manged_default_content_settings.image", 1);
-//            options.addPreference("profile.content_settings.plugin_whitelist.adobe-flash-player", 1);
-//            options.addPreference("profile.content_settings.exceptions.plugins.*,*.per_resource.adobe-flash-player", 1);
-//            options.addArguments("--headless"); //无浏览器模式
-//            options.setHeadless(true);
-            driver = new FirefoxDriver(options);//实例化
+            driver = init(1);
             //设定网址
             driver.get("https://2.fang.com/Default.aspx");
-            driver.manage().addCookie(new Cookie("sfut", "D1D4D69B572CCFCFA3BD6457A691A073E15438EA9AC4D19BCCC4B4EDEF043E1E6B60236CE733F12A66883D9E632FE58A01DBEC70F16C12E4CA5C2DE97C8CE33B36B19D19DB57B4AD8D6EEF63ACBCB7EBA8FAAD82B27316C7"));
-            Thread.sleep(2000);
+            List<Cookie> cookies1 = JSON.parseArray(s, Cookie.class);
+            for (Cookie cookie : cookies1) {
+                driver.manage().addCookie(cookie);
+            }
+            Thread.sleep(1000);
 
             driver.get("https://2.fang.com/magent/house/sale/saleinput.aspx");
-
-            WebDriverWait webDriverWait = new WebDriverWait(driver, 5);
+            Thread.sleep(1000);
 
             driver.findElement(By.className("layui-layer-btn0")).click();
 
@@ -237,15 +241,14 @@ public class SeleniumServiceImpl implements SeleniumService {
             Thread.sleep(1000);
             driver.findElement(By.id("input_n_str_LOOKHOUSE3")).click();
             Thread.sleep(1000);
+            driver.findElement(By.id("salesentry_07")).click();
+            Thread.sleep(5000);
 
             //定位上传按钮， 添加本地文件
             WebElement sfile_1 = driver.findElement(By.id("Sfile_1"));
             sfile_1.click();
 
             Thread.sleep(5000);
-
-
-
 
 
             //显示等待控制对象
@@ -262,8 +265,32 @@ public class SeleniumServiceImpl implements SeleniumService {
         }
     }
 
-    public static void main(String[] args) {
-        HttpResponse execute = HttpRequest.get("https://probe.3g.fang.com/Prick.do?aip=1&aa=1&at=1&fst=3&fet=0&fn=fileclickmap&dn=clickmap&cst=`&data=agentmainput`2.fang.com`https%3A//2.fang.com/magent/house/sale/saleinput.aspx%23`agentmainput_salesentry_00``1366`380`4213`nyd9utnx1g4ucca60e82yt3e61yjx5wmzcr`U_booe07obok5ppuybve7vrw2dv12jxwks4is`i`hzagentmainput&random=0.3598727674204494").cookie(new HttpCookie("sfut", "D1D4D69B572CCFCFA3BD6457A691A073E15438EA9AC4D19BCCC4B4EDEF043E1E6B60236CE733F12A66883D9E632FE58A01DBEC70F16C12E4CA5C2DE97C8CE33B36B19D19DB57B4AD8D6EEF63ACBCB7EBA8FAAD82B27316C7")).execute();
-        System.out.println(execute.body());
+
+    private WebDriver init(int type) {
+        WebDriver driver = null;
+        switch (type) {
+            case 1:
+                System.setProperty("webdriver.chrome.driver", "D:\\java\\chromedriver\\chromedriver.exe");// chromedriver服务地址
+                ChromeOptions chromeOptions = new ChromeOptions();
+//                chromeOptions.setHeadless(true);
+                Map<String, Object> prefs = new HashMap<>();
+                prefs.put("profile.managed_default_content_settings.images", 1);
+                prefs.put("profile.content_settings.plugin_whitelist.adobe-flash-player", 1);
+                prefs.put("profile.content_settings.exceptions.plugins.*,*.per_resource.adobe-flash-player", 1);
+                chromeOptions.setExperimentalOption("prefs", prefs);
+
+                chromeOptions.addArguments("--no-sandbox");
+                chromeOptions.addArguments("--disable-dev-shm-usage");
+//                chromeOptions.addArguments("user-data-dir=C:\\Users\\Administrator\\AppData\\Local\\Google\\Chrome\\User Data");
+                driver = new ChromeDriver(chromeOptions); // 新建一个WebDriver 的对象，但是new 的是谷歌的驱动
+                break;
+            case 2:
+                System.setProperty("webdriver.firefox.bin", "E://Program Files//Mozilla Firefox//firefox.exe");
+                System.setProperty("webdriver.gecko.driver", "E://java//chromedriver_win32//geckodriver.exe");
+                FirefoxOptions options = new FirefoxOptions();
+                driver = new FirefoxDriver(options);//实例化
+                break;
+        }
+        return driver;
     }
 }
