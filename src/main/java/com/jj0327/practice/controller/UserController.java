@@ -1,8 +1,6 @@
 package com.jj0327.practice.controller;
 
 
-import cn.hutool.http.HttpRequest;
-import cn.hutool.http.HttpResponse;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
-import java.util.HashMap;
 
 /**
  * <p>
@@ -59,7 +56,7 @@ public class UserController<main> {
 
     @GetMapping("/publish")
     Result publish(String username, String pwd) {
-        return seleniumService.publish("tongyuelong1313", "tyl199604");
+        return seleniumService.publish("tongyuelong1313", "tyl199604", null);
     }
 
 }

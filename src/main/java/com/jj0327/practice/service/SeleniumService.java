@@ -1,5 +1,6 @@
 package com.jj0327.practice.service;
 
+import com.jj0327.practice.domain.HouseSale;
 import com.jj0327.practice.entity.base.Result;
 
 /**
@@ -11,5 +12,5 @@ public interface SeleniumService {
 
     Result login(String username, String password);
 
-    Result publish(String username, String password);
+    Result publish(String username, String password, HouseSale houseSale);
 }
